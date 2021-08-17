@@ -72,16 +72,12 @@ class Blockchain {
             }
             block.hash = SHA256(JSON.stringify(block)).toString();
             //adding block without validation chain
-            self.chain.push(block);
-            self.height ++;
-            resolve(block);
-
-            /*
+            
             //validate chain
-           console.debug("Validation of chain started");
+           console.debug("Validation of chain started -out");
            let errors = await self.validateChain();
            console.log(errors);
-           console.debug("Validation of chain ended");
+           console.debug("Validation of chain ended-out");
            if (errors.length === 0){
                 self.chain.push(block);
                 self.height ++;
@@ -89,7 +85,7 @@ class Blockchain {
            }else{
                reject(errors);
            }
-           */
+           
         });
     }
 
@@ -130,12 +126,9 @@ class Blockchain {
     submitStar(address, message, signature, star) {
         let self = this;
         return new Promise(async (resolve, reject) => {
-            console.log("come to submitstar")
             let temp = parseInt(message.split(':')[1]);
             let currentTime = parseInt(new Date().getTime().toString().slice(0, -3));
-            console.log(new Date().getTime().toString().slice(0, -3));
-            console.log(" time takes: : ",currentTime-temp);
-            if((currentTime - temp) < (5*60*1000)){
+            if((currentTime - temp) < (5*60)){
                 if(bitcoinMessage.verify(message, address,signature)){
                     console.log("bitconmessage verfication succeeded")
                     let block = new BlockClass.Block({"owner":address, "star":star})
@@ -220,17 +213,20 @@ class Blockchain {
         let self = this;
         let errorLog = [];
         return new Promise(async (resolve, reject) => {
+
+            console.log("validation chain started");
             let validationPromises = [];
             self.chain.forEach((block, index)=>{
                 if(block.height>0){
                     const previousBlock = self.chain[index-1];
-                    if(block.p !== previousBlock.hash){
+                    if(block.previousBlockHash !== previousBlock.hash){
                         const errorMessage = `Block ${index} previousBlockHash set to ${block.previousBlockHash}, but actual previous block hash was ${previousBlock.hash}`;
                         errorLog.push(errorMessage);
                     }
                 }
                 validationPromises.push(block.validate());
             });
+            console.log("inter chain validation finished, errors found: ", errorLog.length);
 
             Promise.all(validationPromises)
             .then(validatedBlocks => {
@@ -241,7 +237,8 @@ class Blockchain {
                         errorLog.push(errorMessage);
                     }
                 });
-
+            console.log("inside chain block validation finished, errors found: ", errorLog.length);
+            console.log( errorLog);
                 resolve(errorLog);
             });
 
